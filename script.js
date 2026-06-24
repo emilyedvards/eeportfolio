@@ -16,7 +16,8 @@ const colorFields = [
 const stillnessDelay = 500;
 const stampCooldown = 500;
 const ambientGrowthDuration = 60000;
-const ambientGrowthAmount = 1;
+const mobileGrowthAmount = 1;
+const desktopGrowthAmount = 1.75;
 const blooms = [];
 
 let pixelRatio = 1;
@@ -32,6 +33,8 @@ let lastScrollStampY = window.scrollY;
 let nextScrollDistance = randomScrollDistance();
 let touchTapStart = null;
 let mobileTopBloomSeeded = false;
+let warmColorQueue = [];
+let coolColorQueue = [];
 
 function hexToRgb(hex) {
   const value = Number.parseInt(hex.slice(1), 16);
@@ -58,6 +61,39 @@ function randomScrollDistance() {
   return 250 + Math.random() * 150;
 }
 
+function shuffledColorQueue(indices) {
+  const queue = [...indices];
+
+  for (let index = queue.length - 1; index > 0; index -= 1) {
+    const swapIndex = Math.floor(Math.random() * (index + 1));
+    [queue[index], queue[swapIndex]] = [queue[swapIndex], queue[index]];
+  }
+
+  return queue;
+}
+
+function nextColorFieldIndex() {
+  const isWarm = nextColorTemperature === "warm";
+  let queue = isWarm ? warmColorQueue : coolColorQueue;
+
+  if (queue.length === 0) {
+    queue = shuffledColorQueue(isWarm ? [0, 1, 2, 3] : [4, 5, 6, 7]);
+    if (isWarm) warmColorQueue = queue;
+    else coolColorQueue = queue;
+  }
+
+  let fieldIndex = queue.shift();
+
+  if (fieldIndex === lastColorFieldIndex && queue.length > 0) {
+    queue.push(fieldIndex);
+    fieldIndex = queue.shift();
+  }
+
+  lastColorFieldIndex = fieldIndex;
+  nextColorTemperature = isWarm ? "cool" : "warm";
+  return fieldIndex;
+}
+
 function seedMobileTopBloom() {
   if (!mobilePointer.matches || mobileTopBloomSeeded) return;
 
@@ -77,18 +113,7 @@ function makeBloom(x, y) {
   const desktopSizeMultiplier = mobilePointer.matches ? 1 : 1.2;
   const radius = (50 + Math.random() * 16) * desktopSizeMultiplier;
   const opacity = 0.28 + Math.random() * 0.06;
-  const colorRange =
-    nextColorTemperature === "warm" ? [0, 1, 2, 3] : [4, 5, 6, 7];
-  let fieldIndex = colorRange[Math.floor(Math.random() * colorRange.length)];
-  if (fieldIndex === lastColorFieldIndex) {
-    const alternatives = colorRange.filter(
-      (index) => index !== lastColorFieldIndex,
-    );
-    fieldIndex = alternatives[Math.floor(Math.random() * alternatives.length)];
-  }
-  lastColorFieldIndex = fieldIndex;
-  nextColorTemperature =
-    nextColorTemperature === "warm" ? "cool" : "warm";
+  const fieldIndex = nextColorFieldIndex();
   const colors = colorFields[fieldIndex];
   const shapeFamilies = [
     { lobes: 1, streak: false, x: [0.88, 1.12], y: [0.88, 1.12] },
@@ -148,9 +173,12 @@ function makeBloom(x, y) {
 function drawBloom(bloom, now) {
   const [outer, inner] = bloom.colors;
   const age = Math.min((now - bloom.createdAt) / ambientGrowthDuration, 1);
+  const growthAmount = mobilePointer.matches
+    ? mobileGrowthAmount
+    : desktopGrowthAmount;
   const ambientScale = reducedMotion.matches
     ? 1
-    : 1 + age * ambientGrowthAmount;
+    : 1 + age * growthAmount;
 
   context.save();
   context.translate(bloom.x, bloom.y);
@@ -379,3 +407,5 @@ reducedMotion.addEventListener("change", () => {
 
 resizeCanvas();
 seedMobileTopBloom();
+
+
