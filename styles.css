@@ -307,14 +307,9 @@ a:focus-visible {
     transform 420ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-@media (hover: hover) {
-  .section-nav a:hover::before {
-    opacity: 0.8;
-    transform: scale(1, 1);
-  }
-}
-
-.section-nav a:focus-visible::before {
+.section-nav a:hover::before,
+.section-nav a:focus-visible::before,
+.section-nav a:active::before {
   opacity: 0.8;
   transform: scale(1, 1);
 }
@@ -474,16 +469,18 @@ a:focus-visible {
     transform 520ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-@media (hover: hover) {
-  .listing-page .section-marker a:hover::before {
-    opacity: 0.9;
-    transform: scale(1, 1);
-  }
-}
-
-.listing-page .section-marker a:focus-visible::before {
+.listing-page .section-marker a:hover::before,
+.listing-page .section-marker a:focus-visible::before,
+.listing-page .section-marker a:active::before {
   opacity: 0.9;
   transform: scale(1, 1);
+}
+
+@media (hover: none) {
+  .section-nav a::before,
+  .listing-page .section-marker a::before {
+    transition-duration: 80ms, 120ms;
+  }
 }
 
 .collaborator-columns {
@@ -581,3 +578,4 @@ a:focus-visible {
   }
 
 }
+
