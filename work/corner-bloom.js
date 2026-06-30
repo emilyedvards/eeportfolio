@@ -15,17 +15,21 @@ const colors = {
 };
 
 function resizeCanvas() {
+  const bounds = canvas.getBoundingClientRect();
+  const width = bounds.width || window.innerWidth;
+  const height = bounds.height || window.innerHeight;
   pixelRatio = Math.min(window.devicePixelRatio || 1, 2);
-  canvas.width = Math.round(window.innerWidth * pixelRatio);
-  canvas.height = Math.round(window.innerHeight * pixelRatio);
+  canvas.width = Math.round(width * pixelRatio);
+  canvas.height = Math.round(height * pixelRatio);
   context.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
   updateTargetProgress();
   render();
 }
 
 function scrollProgress() {
+  const viewportHeight = canvas.height / pixelRatio || window.innerHeight;
   const maxScroll =
-    document.documentElement.scrollHeight - window.innerHeight;
+    document.documentElement.scrollHeight - viewportHeight;
 
   if (maxScroll <= 0) return 0;
   return Math.min(Math.max(window.scrollY / maxScroll, 0), 1);
@@ -48,8 +52,8 @@ function rgba(color, opacity) {
 }
 
 function drawCornerBloom(progress) {
-  const width = window.innerWidth;
-  const height = window.innerHeight;
+  const width = canvas.width / pixelRatio;
+  const height = canvas.height / pixelRatio;
   const centerX = width * 0.5;
   const centerY = height + Math.min(width, height) * 0.02;
   const baseRadius = Math.min(width, height) * 0.46;
@@ -111,7 +115,7 @@ function drawCornerBloom(progress) {
 }
 
 function render() {
-  context.clearRect(0, 0, window.innerWidth, window.innerHeight);
+  context.clearRect(0, 0, canvas.width / pixelRatio, canvas.height / pixelRatio);
   drawCornerBloom(currentProgress);
 }
 
@@ -135,6 +139,8 @@ function requestRender() {
 
 window.addEventListener("resize", resizeCanvas);
 window.addEventListener("scroll", updateTargetProgress, { passive: true });
+window.visualViewport?.addEventListener("resize", resizeCanvas);
 reducedMotion.addEventListener("change", updateTargetProgress);
 
 resizeCanvas();
+
