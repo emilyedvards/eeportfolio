@@ -116,7 +116,7 @@ function seedMobileTopBloom() {
 
 function makeBloom(x, y) {
   const now = performance.now();
-  if (now - lastStampAt < stampCooldown) return;
+  if (now - lastStampAt < stampCooldown) return false;
 
   const desktopSizeMultiplier = mobilePointer.matches ? 1 : 1.2;
   const radius = (50 + Math.random() * 16) * desktopSizeMultiplier;
@@ -176,6 +176,7 @@ function makeBloom(x, y) {
   render();
 
   if (!reducedMotion.matches) requestRender();
+  return true;
 }
 
 function drawBloom(bloom, now, targetContext = context) {
@@ -336,9 +337,14 @@ function scheduleBloom(x, y) {
   stillnessTimer = window.setTimeout(() => makeBloom(x, y), stillnessDelay);
 }
 
-function startTouchTap(x, y) {
+function startTouchTap(x, y, bloomImmediately = false) {
   stopActiveBloom();
-  touchTapStart = { x, y, time: performance.now() };
+  touchTapStart = {
+    x,
+    y,
+    time: performance.now(),
+    bloomed: bloomImmediately ? makeBloom(x, y + window.scrollY) : false,
+  };
 }
 
 function finishTouchTap(x, y, target) {
@@ -348,6 +354,7 @@ function finishTouchTap(x, y, target) {
 
   const duration = performance.now() - tap.time;
   const distance = Math.hypot(x - tap.x, y - tap.y);
+  if (tap.bloomed) return;
   if (duration > 350 || distance > 12) return;
   if (target instanceof Element && target.closest("a")) return;
   makeBloom(x, y + window.scrollY);
@@ -369,6 +376,7 @@ window.addEventListener(
   "pointerdown",
   (event) => {
     if (event.pointerType !== "touch" && !mobilePointer.matches) return;
+    if (touchTapStart) return;
     startTouchTap(event.clientX, event.clientY);
   },
   { passive: true },
@@ -379,7 +387,12 @@ window.addEventListener(
   (event) => {
     const touch = event.changedTouches[0];
     if (!touch) return;
-    startTouchTap(touch.clientX, touch.clientY);
+    const target = event.target;
+    const isIntroText =
+      target instanceof Element &&
+      Boolean(target.closest("h1")) &&
+      !target.closest("a");
+    startTouchTap(touch.clientX, touch.clientY, isIntroText);
   },
   { passive: true },
 );
@@ -496,4 +509,5 @@ reducedMotion.addEventListener("change", () => {
 
 resizeCanvas();
 seedMobileTopBloom();
+
 
