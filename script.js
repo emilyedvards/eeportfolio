@@ -336,6 +336,23 @@ function scheduleBloom(x, y) {
   stillnessTimer = window.setTimeout(() => makeBloom(x, y), stillnessDelay);
 }
 
+function startTouchTap(x, y) {
+  stopActiveBloom();
+  touchTapStart = { x, y, time: performance.now() };
+}
+
+function finishTouchTap(x, y, target) {
+  const tap = touchTapStart;
+  touchTapStart = null;
+  if (!tap) return;
+
+  const duration = performance.now() - tap.time;
+  const distance = Math.hypot(x - tap.x, y - tap.y);
+  if (duration > 350 || distance > 12) return;
+  if (target instanceof Element && target.closest("a")) return;
+  makeBloom(x, y + window.scrollY);
+}
+
 window.addEventListener(
   "pointermove",
   (event) => {
@@ -352,12 +369,27 @@ window.addEventListener(
   "pointerdown",
   (event) => {
     if (event.pointerType !== "touch" && !mobilePointer.matches) return;
-    stopActiveBloom();
-    touchTapStart = {
-      x: event.clientX,
-      y: event.clientY,
-      time: performance.now(),
-    };
+    startTouchTap(event.clientX, event.clientY);
+  },
+  { passive: true },
+);
+
+window.addEventListener(
+  "touchstart",
+  (event) => {
+    const touch = event.changedTouches[0];
+    if (!touch) return;
+    startTouchTap(touch.clientX, touch.clientY);
+  },
+  { passive: true },
+);
+
+window.addEventListener(
+  "touchend",
+  (event) => {
+    const touch = event.changedTouches[0];
+    if (!touch) return;
+    finishTouchTap(touch.clientX, touch.clientY, event.target);
   },
   { passive: true },
 );
@@ -365,7 +397,14 @@ window.addEventListener(
 window.addEventListener(
   "click",
   (event) => {
-    if (event.pointerType === "touch" || mobilePointer.matches) return;
+    if (event.pointerType === "touch" || mobilePointer.matches) {
+      if (event.target.closest("a")) return;
+      if (performance.now() - lastStampAt < stampCooldown) return;
+      stopActiveBloom();
+      makeBloom(event.clientX, event.clientY + window.scrollY);
+      return;
+    }
+
     stopActiveBloom();
     makeBloom(event.clientX, event.clientY);
   },
@@ -395,15 +434,7 @@ window.addEventListener(
   "pointerup",
   (event) => {
     if (event.pointerType !== "touch" && !mobilePointer.matches) return;
-    const tap = touchTapStart;
-    touchTapStart = null;
-    if (!tap) return;
-
-    const duration = performance.now() - tap.time;
-    const distance = Math.hypot(event.clientX - tap.x, event.clientY - tap.y);
-    if (duration > 350 || distance > 12) return;
-    if (event.target.closest("a") || event.target.closest(".intro")) return;
-    makeBloom(event.clientX, event.clientY + window.scrollY);
+    finishTouchTap(event.clientX, event.clientY, event.target);
   },
   { passive: true },
 );
@@ -434,6 +465,15 @@ window.addEventListener(
   { passive: true },
 );
 
+window.addEventListener(
+  "touchcancel",
+  () => {
+    touchTapStart = null;
+    stopActiveBloom();
+  },
+  { passive: true },
+);
+
 window.addEventListener("blur", stopActiveBloom);
 window.addEventListener("resize", () => {
   resizeCanvas();
@@ -456,3 +496,4 @@ reducedMotion.addEventListener("change", () => {
 
 resizeCanvas();
 seedMobileTopBloom();
+
